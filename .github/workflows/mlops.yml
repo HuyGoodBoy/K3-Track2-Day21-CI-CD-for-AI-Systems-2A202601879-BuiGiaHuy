@@ -44,6 +44,16 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Set up DagsHub MLflow tracking (Bonus 1)
+        env:
+          DAGSHUB_USER: ${{ secrets.DAGSHUB_USER }}
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+        run: |
+          echo "MLFLOW_TRACKING_URI=https://dagshub.com/${DAGSHUB_USER}/K3-Track2-Day21-CI-CD-for-AI-Systems-2A202601879-BuiGiaHuy.mlflow" >> $GITHUB_ENV
+          echo "DAGSHUB_USER=${DAGSHUB_USER}" >> $GITHUB_ENV
+          echo "DAGSHUB_TOKEN=${DAGSHUB_TOKEN}" >> $GITHUB_ENV
+          echo "MLflow tracking URI set to DagsHub"
+
       - name: Authenticate to Cloud Storage
         run: |
           echo "${{ secrets.CLOUD_CREDENTIALS_B64 }}" | base64 -d > /tmp/sa-key.json

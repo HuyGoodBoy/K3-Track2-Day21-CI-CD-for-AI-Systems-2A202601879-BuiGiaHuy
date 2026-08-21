@@ -24,6 +24,25 @@ from sklearn.metrics import (
     classification_report,
 )
 
+# Bonus 1: DagsHub MLflow remote tracking
+# If MLFLOW_TRACKING_URI is set (CI/CD or local), use it. Otherwise use local sqlite.
+_DEFAULT_TRACKING_URI = "sqlite:///mlflow.db"
+_tracking_uri = os.environ.get("MLFLOW_TRACKING_URI")
+if _tracking_uri:
+    mlflow.set_tracking_uri(_tracking_uri)
+    print(f"[Bonus 1] MLflow tracking URI set to: {_tracking_uri}")
+else:
+    mlflow.set_tracking_uri(_DEFAULT_TRACKING_URI)
+    print(f"[Bonus 1] MLflow tracking URI = local sqlite (set MLFLOW_TRACKING_URI to use remote)")
+
+# Bonus 1: DagsHub auth (works for both CLI and MLflow)
+_dagshub_user = os.environ.get("DAGSHUB_USER")
+_dagshub_token = os.environ.get("DAGSHUB_TOKEN")
+if _dagshub_user and _dagshub_token:
+    os.environ["MLFLOW_TRACKING_USERNAME"] = _dagshub_user
+    os.environ["MLFLOW_TRACKING_PASSWORD"] = _dagshub_token
+    print(f"[Bonus 1] DagsHub auth set for user: {_dagshub_user}")
+
 EVAL_THRESHOLD = 0.70
 DRIFT_MIN_RATIO = 0.10
 

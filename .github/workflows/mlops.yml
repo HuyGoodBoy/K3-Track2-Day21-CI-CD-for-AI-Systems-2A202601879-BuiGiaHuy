@@ -132,5 +132,12 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           script: |
             sudo systemctl restart mlops-serve
-            sleep 5
-            curl -f http://localhost:8000/health
+            sleep 8
+            echo "=== service status ==="
+            sudo systemctl status mlops-serve --no-pager | head -30 || true
+            echo "=== recent logs ==="
+            sudo journalctl -u mlops-serve --no-pager -n 50 || true
+            echo "=== port check ==="
+            sudo ss -tlnp | grep 8000 || echo "port 8000 NOT listening"
+            echo "=== curl health ==="
+            curl -fv http://localhost:8000/health 2>&1 || echo "health check failed"

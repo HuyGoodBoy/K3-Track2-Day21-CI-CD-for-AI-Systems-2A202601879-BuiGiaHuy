@@ -5,7 +5,8 @@ import yaml
 import json
 import joblib
 import os
-from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier, VotingClassifier
+from sklearn.ensemble import RandomForestClassifier, VotingClassifier
+from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score, f1_score
 
 EVAL_THRESHOLD = 0.70
@@ -84,25 +85,32 @@ def train(
 
         mlflow.log_params(params)
 
+        xgb = XGBClassifier(
+            n_estimators=params.get("n_estimators", 500),
+            max_depth=params.get("max_depth", 8),
+            learning_rate=params.get("learning_rate", 0.05),
+            subsample=params.get("subsample", 0.8),
+            colsample_bytree=params.get("colsample_bytree", 0.8),
+            objective="multi:softprob",
+            num_class=3,
+            eval_metric="mlogloss",
+            random_state=42,
+            n_jobs=-1,
+            tree_method="hist",
+        )
         rf = RandomForestClassifier(
-            n_estimators=500,
+            n_estimators=400,
             max_depth=None,
             min_samples_split=2,
             class_weight="balanced",
             random_state=42,
             n_jobs=-1,
         )
-        hgb = HistGradientBoostingClassifier(
-            max_iter=500,
-            max_depth=8,
-            learning_rate=0.05,
-            random_state=42,
-        )
 
         model = VotingClassifier(
-            estimators=[("rf", rf), ("hgb", hgb)],
+            estimators=[("xgb", xgb), ("rf", rf)],
             voting="soft",
-            n_jobs=-1,
+            n_jobs=1,
         )
         model.fit(X_train, y_train)
 

@@ -1,4 +1,6 @@
-# Sieu tham so cho mo hinh RandomForestClassifier
-n_estimators: 200
-max_depth: 30
-min_samples_split: 2
+# Sieu tham so cho mo hinh XGBoost
+n_estimators: 500
+max_depth: 8
+learning_rate: 0.05
+subsample: 0.8
+colsample_bytree: 0.8

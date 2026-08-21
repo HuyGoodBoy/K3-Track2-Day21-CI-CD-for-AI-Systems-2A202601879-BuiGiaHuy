@@ -13,13 +13,50 @@ EVAL_THRESHOLD = 0.70
 
 def _add_features(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    df["sulphate_to_chloride"] = df["sulphates"] / (df["chlorides"] + 1e-9)
-    df["free_to_total_so2"] = df["free sulfur dioxide"] / (df["total sulfur dioxide"] + 1e-9)
-    df["density_to_alcohol"] = df["density"] / (df["alcohol"] + 1e-9)
-    df["acidity_sum"] = df["fixed acidity"] + df["volatile acidity"] + df["citric acid"]
-    df["sugar_to_alcohol"] = df["residual sugar"] / (df["alcohol"] + 1e-9)
-    df["ph_times_acidity"] = df["pH"] * df["acidity_sum"]
-    df["so2_per_alcohol"] = (df["total sulfur dioxide"] + df["free sulfur dioxide"]) / (df["alcohol"] + 1e-9)
+    cols = df.columns
+
+    def _col(*candidates):
+        for c in candidates:
+            if c in cols:
+                return c
+        return None
+
+    sulphates = _col("sulphates")
+    chlorides = _col("chlorides")
+    if sulphates and chlorides:
+        df["sulphate_to_chloride"] = df[sulphates] / (df[chlorides] + 1e-9)
+
+    free_so2 = _col("free sulfur dioxide", "free_sulfur_dioxide")
+    total_so2 = _col("total sulfur dioxide", "total_sulfur_dioxide")
+    if free_so2 and total_so2:
+        df["free_to_total_so2"] = df[free_so2] / (df[total_so2] + 1e-9)
+
+    density = _col("density")
+    alcohol = _col("alcohol")
+    if density and alcohol:
+        df["density_to_alcohol"] = df[density] / (df[alcohol] + 1e-9)
+
+    acid_cols = [
+        c for c in (
+            _col("fixed acidity", "fixed_acidity"),
+            _col("volatile acidity", "volatile_acidity"),
+            _col("citric acid", "citric_acid"),
+        ) if c is not None
+    ]
+    if len(acid_cols) >= 2:
+        df["acidity_sum"] = df[acid_cols].sum(axis=1)
+
+    sugar = _col("residual sugar", "residual_sugar")
+    if sugar and alcohol:
+        df["sugar_to_alcohol"] = df[sugar] / (df[alcohol] + 1e-9)
+
+    ph = _col("pH")
+    if ph and "acidity_sum" in df.columns:
+        df["ph_times_acidity"] = df[ph] * df["acidity_sum"]
+
+    if free_so2 and total_so2 and alcohol:
+        df["so2_per_alcohol"] = (df[total_so2] + df[free_so2]) / (df[alcohol] + 1e-9)
+
     return df
 
 

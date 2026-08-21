@@ -1,6 +1,16 @@
-# Sieu tham so cho mo hinh XGBoost
+# Sieu tham so mo hinh
+# Bonus 2: chon thuat toan (random_forest | gradient_boosting | logistic_regression | xgboost | voting)
+model_type: voting
+
+# XGBoost / Gradient Boosting params
 n_estimators: 500
 max_depth: 8
 learning_rate: 0.05
 subsample: 0.8
 colsample_bytree: 0.8
+
+# RandomForest params
+min_samples_split: 2
+
+# LogisticRegression params
+max_iter: 1000

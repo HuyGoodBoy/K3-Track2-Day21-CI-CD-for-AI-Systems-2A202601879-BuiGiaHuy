@@ -99,6 +99,23 @@ jobs:
           name: metrics
           path: outputs/metrics.json
 
+      - name: Save report as artifact (Bonus 3)
+        uses: actions/upload-artifact@v4
+        with:
+          name: report
+          path: outputs/report.txt
+
+      - name: Upload metrics.json to Cloud Storage (Bonus 4 history)
+        run: |
+          python - <<'EOF'
+          from google.cloud import storage
+          client = storage.Client()
+          bucket = client.bucket("${{ secrets.CLOUD_BUCKET }}")
+          blob = bucket.blob("models/latest/metrics.json")
+          blob.upload_from_filename("outputs/metrics.json")
+          print("Metrics uploaded for next-run comparison")
+          EOF
+
   eval:
     name: Eval
     needs: train
@@ -123,6 +140,29 @@ jobs:
     needs: eval
     runs-on: ubuntu-latest
     steps:
+
+      # Bonus 4: rollback safety - compare new accuracy vs previous run's
+      - name: Rollback check (Bonus 4)
+        run: |
+          python - <<'EOF'
+          from google.cloud import storage
+          import json
+          client = storage.Client()
+          bucket = client.bucket("${{ secrets.CLOUD_BUCKET }}")
+          new_acc = float("${{ needs.train.outputs.accuracy }}")
+          prev_blob = bucket.blob("models/latest/metrics.json")
+          if not prev_blob.exists():
+              print(f"No previous metrics. Deploying new model (acc={new_acc:.4f})")
+          else:
+              prev = json.loads(prev_blob.download_as_text())
+              prev_acc = prev.get("accuracy", 0.0)
+              print(f"Previous accuracy: {prev_acc:.4f}")
+              print(f"New accuracy:      {new_acc:.4f}")
+              if new_acc < prev_acc:
+                  print(f"ROLLBACK: new acc ({new_acc:.4f}) < prev acc ({prev_acc:.4f})")
+                  raise SystemExit(1)
+              print(f"PASS: new acc >= prev acc, safe to deploy")
+          EOF
 
       - name: SSH deploy to VM
         uses: appleboy/ssh-action@v1.0.3

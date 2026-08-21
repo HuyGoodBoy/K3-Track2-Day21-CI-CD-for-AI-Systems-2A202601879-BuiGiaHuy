@@ -5,29 +5,27 @@ import yaml
 import json
 import joblib
 import os
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
+from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier, VotingClassifier
 from sklearn.metrics import accuracy_score, f1_score
 
 EVAL_THRESHOLD = 0.70
 
 
-def _build_model(params: dict):
-    model_type = params.pop("model_type", "random_forest")
-    if model_type == "gradient_boosting":
-        clf = GradientBoostingClassifier(random_state=42, **params)
-    else:
-        clf = RandomForestClassifier(random_state=42, **params)
-    return Pipeline([
-        ("scaler", StandardScaler()),
-        ("clf", clf),
-    ])
+def _add_features(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    df["sulphate_to_chloride"] = df["sulphates"] / (df["chlorides"] + 1e-9)
+    df["free_to_total_so2"] = df["free sulfur dioxide"] / (df["total sulfur dioxide"] + 1e-9)
+    df["density_to_alcohol"] = df["density"] / (df["alcohol"] + 1e-9)
+    df["acidity_sum"] = df["fixed acidity"] + df["volatile acidity"] + df["citric acid"]
+    df["sugar_to_alcohol"] = df["residual sugar"] / (df["alcohol"] + 1e-9)
+    df["ph_times_acidity"] = df["pH"] * df["acidity_sum"]
+    df["so2_per_alcohol"] = (df["total sulfur dioxide"] + df["free sulfur dioxide"]) / (df["alcohol"] + 1e-9)
+    return df
 
 
 def train(
     params: dict,
-    data_path: str = "data/train_phase1.csv",
+    data_path: str = "data/train_phase2.csv",
     eval_path: str = "data/eval.csv",
 ) -> float:
     """
@@ -36,6 +34,9 @@ def train(
 
     df_train = pd.read_csv(data_path)
     df_eval = pd.read_csv(eval_path)
+
+    df_train = _add_features(df_train)
+    df_eval = _add_features(df_eval)
 
     X_train = df_train.drop(columns=["target"])
     y_train = df_train["target"]
@@ -46,7 +47,26 @@ def train(
 
         mlflow.log_params(params)
 
-        model = _build_model(params.copy())
+        rf = RandomForestClassifier(
+            n_estimators=500,
+            max_depth=None,
+            min_samples_split=2,
+            class_weight="balanced",
+            random_state=42,
+            n_jobs=-1,
+        )
+        hgb = HistGradientBoostingClassifier(
+            max_iter=500,
+            max_depth=8,
+            learning_rate=0.05,
+            random_state=42,
+        )
+
+        model = VotingClassifier(
+            estimators=[("rf", rf), ("hgb", hgb)],
+            voting="soft",
+            n_jobs=-1,
+        )
         model.fit(X_train, y_train)
 
         preds = model.predict(X_eval)

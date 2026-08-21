@@ -49,6 +49,25 @@ jobs:
           echo "${{ secrets.CLOUD_CREDENTIALS }}" > /tmp/sa-key.json
           echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa-key.json" >> $GITHUB_ENV
 
+      - name: Debug credentials
+        run: |
+          echo "=== File size ==="
+          wc -c /tmp/sa-key.json
+          echo "=== First 80 chars ==="
+          head -c 80 /tmp/sa-key.json
+          echo ""
+          echo "=== Last 80 chars ==="
+          tail -c 80 /tmp/sa-key.json
+          echo ""
+          echo "=== Check for backslash-escaped quotes ==="
+          grep -c '\\"' /tmp/sa-key.json || echo "no escaped quotes found"
+          echo "=== Check JSON validity ==="
+          python -c "import json; d=json.load(open('/tmp/sa-key.json')); print('JSON OK'); print('client_email:', d['client_email']); print('private_key starts:', d['private_key'][:30])"
+          echo "=== Test gcloud auth ==="
+          gcloud auth activate-service-account --key-file=/tmp/sa-key.json 2>&1 | head -5
+          echo "=== Test GCS list ==="
+          gcloud storage ls gs://day21vin/ 2>&1 | head -5
+
       - name: Pull data with DVC
         run: dvc pull
 

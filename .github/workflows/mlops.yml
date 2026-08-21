@@ -48,11 +48,26 @@ jobs:
         env:
           DAGSHUB_USER: ${{ secrets.DAGSHUB_USER }}
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
-          MLFLOW_TRACKING_URI: https://dagshub.com/${{ secrets.DAGSHUB_USER }}/K3-Track2-Day21-CI-CD-for-AI-Systems-2A202601879-BuiGiaHuy.mlflow
         run: |
+          # Debug: show what secrets we received (masked)
+          echo "=== DagsHub secrets debug ==="
+          echo "DAGSHUB_USER length: ${#DAGSHUB_USER}"
+          echo "DAGSHUB_TOKEN length: ${#DAGSHUB_TOKEN}"
+          if [ -n "$DAGSHUB_USER" ]; then
+            echo "DAGSHUB_USER first 3 chars: ${DAGSHUB_USER:0:3}..."
+          else
+            echo "DAGSHUB_USER is EMPTY"
+          fi
+          if [ -n "$DAGSHUB_TOKEN" ]; then
+            echo "DAGSHUB_TOKEN first 4 chars: ${DAGSHUB_TOKEN:0:4}..."
+          else
+            echo "DAGSHUB_TOKEN is EMPTY"
+          fi
+          echo "=== End debug ==="
+          echo ""
           echo "DAGSHUB_USER=${DAGSHUB_USER}" >> $GITHUB_ENV
           echo "DAGSHUB_TOKEN=${DAGSHUB_TOKEN}" >> $GITHUB_ENV
-          echo "MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI}" >> $GITHUB_ENV
+          echo "MLFLOW_TRACKING_URI=https://dagshub.com/${DAGSHUB_USER}/K3-Track2-Day21-CI-CD-for-AI-Systems-2A202601879-BuiGiaHuy.mlflow" >> $GITHUB_ENV
           echo "[Bonus 1] MLflow tracking URI set to DagsHub"
           echo "[Bonus 1] User: ${DAGSHUB_USER}"
           echo "[Bonus 1] URI:  ${MLFLOW_TRACKING_URI}"

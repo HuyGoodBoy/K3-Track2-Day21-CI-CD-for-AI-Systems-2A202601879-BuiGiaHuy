@@ -26,22 +26,23 @@ from sklearn.metrics import (
 
 # Bonus 1: DagsHub MLflow remote tracking
 # If MLFLOW_TRACKING_URI is set (CI/CD or local), use it. Otherwise use local sqlite.
+# Also requires DAGSHUB_USER + DAGSHUB_TOKEN. If either is empty, we fall back to local sqlite
+# so the pipeline doesn't break if the user hasn't configured DagsHub secrets yet.
 _DEFAULT_TRACKING_URI = "sqlite:///mlflow.db"
-_tracking_uri = os.environ.get("MLFLOW_TRACKING_URI")
-if _tracking_uri:
-    mlflow.set_tracking_uri(_tracking_uri)
-    print(f"[Bonus 1] MLflow tracking URI set to: {_tracking_uri}")
-else:
-    mlflow.set_tracking_uri(_DEFAULT_TRACKING_URI)
-    print(f"[Bonus 1] MLflow tracking URI = local sqlite (set MLFLOW_TRACKING_URI to use remote)")
+_tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", "").strip()
+_dagshub_user = os.environ.get("DAGSHUB_USER", "").strip()
+_dagshub_token = os.environ.get("DAGSHUB_TOKEN", "").strip()
 
-# Bonus 1: DagsHub auth (works for both CLI and MLflow)
-_dagshub_user = os.environ.get("DAGSHUB_USER")
-_dagshub_token = os.environ.get("DAGSHUB_TOKEN")
-if _dagshub_user and _dagshub_token:
+if _tracking_uri and _dagshub_user and _dagshub_token:
+    mlflow.set_tracking_uri(_tracking_uri)
     os.environ["MLFLOW_TRACKING_USERNAME"] = _dagshub_user
     os.environ["MLFLOW_TRACKING_PASSWORD"] = _dagshub_token
-    print(f"[Bonus 1] DagsHub auth set for user: {_dagshub_user}")
+    print(f"[Bonus 1] MLflow tracking URI set to DagsHub: {_tracking_uri}")
+    print(f"[Bonus 1] DagsHub user: {_dagshub_user}")
+else:
+    mlflow.set_tracking_uri(_DEFAULT_TRACKING_URI)
+    print(f"[Bonus 1] MLflow tracking URI = local sqlite (DagsHub secrets missing or empty)")
+    print(f"           MLFLOW_TRACKING_URI={_tracking_uri!r}, DAGSHUB_USER={_dagshub_user!r}, DAGSHUB_TOKEN set={bool(_dagshub_token)}")
 
 EVAL_THRESHOLD = 0.70
 DRIFT_MIN_RATIO = 0.10

@@ -48,11 +48,14 @@ jobs:
         env:
           DAGSHUB_USER: ${{ secrets.DAGSHUB_USER }}
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+          MLFLOW_TRACKING_URI: https://dagshub.com/${{ secrets.DAGSHUB_USER }}/K3-Track2-Day21-CI-CD-for-AI-Systems-2A202601879-BuiGiaHuy.mlflow
         run: |
-          echo "MLFLOW_TRACKING_URI=https://dagshub.com/${DAGSHUB_USER}/K3-Track2-Day21-CI-CD-for-AI-Systems-2A202601879-BuiGiaHuy.mlflow" >> $GITHUB_ENV
           echo "DAGSHUB_USER=${DAGSHUB_USER}" >> $GITHUB_ENV
           echo "DAGSHUB_TOKEN=${DAGSHUB_TOKEN}" >> $GITHUB_ENV
-          echo "MLflow tracking URI set to DagsHub"
+          echo "MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI}" >> $GITHUB_ENV
+          echo "[Bonus 1] MLflow tracking URI set to DagsHub"
+          echo "[Bonus 1] User: ${DAGSHUB_USER}"
+          echo "[Bonus 1] URI:  ${MLFLOW_TRACKING_URI}"
 
       - name: Authenticate to Cloud Storage
         run: |
@@ -152,17 +155,35 @@ jobs:
     steps:
 
       # Bonus 4: rollback safety - compare new accuracy vs previous run's
+      # We pull the previous metrics.json from Cloud Storage as a file, then compare locally.
+      # This avoids needing google-cloud-storage in the deploy step.
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies for rollback check
+        run: pip install google-cloud-storage==2.16.0
+
+      - name: Authenticate to Cloud Storage (for rollback fetch)
+        run: |
+          echo "${{ secrets.CLOUD_CREDENTIALS_B64 }}" | base64 -d > /tmp/sa-key.json
+          echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa-key.json" >> $GITHUB_ENV
+
       - name: Rollback check (Bonus 4)
+        env:
+          NEW_ACC: ${{ needs.train.outputs.accuracy }}
         run: |
           python - <<'EOF'
           from google.cloud import storage
           import json
+          import os
           client = storage.Client()
           bucket = client.bucket("${{ secrets.CLOUD_BUCKET }}")
-          new_acc = float("${{ needs.train.outputs.accuracy }}")
+          new_acc = float(os.environ["NEW_ACC"])
           prev_blob = bucket.blob("models/latest/metrics.json")
           if not prev_blob.exists():
-              print(f"No previous metrics. Deploying new model (acc={new_acc:.4f})")
+              print(f"No previous metrics found. Deploying new model (acc={new_acc:.4f})")
           else:
               prev = json.loads(prev_blob.download_as_text())
               prev_acc = prev.get("accuracy", 0.0)

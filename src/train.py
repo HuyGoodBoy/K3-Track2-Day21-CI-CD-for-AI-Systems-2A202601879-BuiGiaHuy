@@ -5,10 +5,17 @@ import yaml
 import json
 import joblib
 import os
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.metrics import accuracy_score, f1_score
 
 EVAL_THRESHOLD = 0.70
+
+
+def _build_model(params: dict):
+    model_type = params.pop("model_type", "random_forest")
+    if model_type == "gradient_boosting":
+        return GradientBoostingClassifier(random_state=42, **params)
+    return RandomForestClassifier(random_state=42, **params)
 
 
 def train(
@@ -32,7 +39,7 @@ def train(
 
         mlflow.log_params(params)
 
-        model = RandomForestClassifier(random_state=42, **params)
+        model = _build_model(params.copy())
         model.fit(X_train, y_train)
 
         preds = model.predict(X_eval)

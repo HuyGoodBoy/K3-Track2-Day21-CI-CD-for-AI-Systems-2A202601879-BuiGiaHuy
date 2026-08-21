@@ -46,8 +46,10 @@ jobs:
 
       - name: Authenticate to Cloud Storage
         run: |
-          echo "${{ secrets.CLOUD_CREDENTIALS }}" > /tmp/sa-key.json
+          echo "${{ secrets.CLOUD_CREDENTIALS_B64 }}" | base64 -d > /tmp/sa-key.json
           echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa-key.json" >> $GITHUB_ENV
+          echo "Decoded file size:"
+          wc -c /tmp/sa-key.json
 
       - name: Debug credentials
         run: |

@@ -212,17 +212,24 @@ jobs:
           echo "${{ secrets.CLOUD_CREDENTIALS_B64 }}" | base64 -d > /tmp/sa-key.json
           echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa-key.json" >> $GITHUB_ENV
 
+      - name: Download metrics from train job
+        uses: actions/download-artifact@v4
+        with:
+          name: metrics
+          path: outputs
+
       - name: Rollback check (Bonus 4)
         env:
-          NEW_ACC: ${{ needs.train.outputs.accuracy }}
+          BUCKET: ${{ secrets.CLOUD_BUCKET }}
         run: |
           python - <<'EOF'
           from google.cloud import storage
-          import json
-          import os
+          import json, os
           client = storage.Client()
-          bucket = client.bucket("${{ secrets.CLOUD_BUCKET }}")
-          new_acc = float(os.environ["NEW_ACC"])
+          bucket = client.bucket(os.environ["BUCKET"])
+          # Read new accuracy from local metrics.json (always present, no env-var quirks)
+          with open("outputs/metrics.json") as f:
+              new_acc = float(json.load(f)["accuracy"])
           prev_blob = bucket.blob("models/latest/metrics.json")
           if not prev_blob.exists():
               print(f"No previous metrics found. Deploying new model (acc={new_acc:.4f})")
